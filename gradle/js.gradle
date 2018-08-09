@@ -1,0 +1,19 @@
+
+dependencies {
+    compile "org.jetbrains.kotlin:kotlin-stdlib-js"
+
+    compile group: 'org.jetbrains.kotlinx', name: 'kotlinx-io-js', version: kotlinx_io_version
+    compile group: 'org.jetbrains.kotlinx', name: 'kotlinx-coroutines-io-js', version: kotlinx_io_version
+}
+
+sourceSets {
+    main {
+        kotlin.srcDir 'src'
+        resources.srcDir 'resources'
+    }
+    test {
+        kotlin.srcDir 'test'
+        resources.srcDir 'test-resources'
+    }
+}
+
