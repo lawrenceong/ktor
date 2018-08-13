@@ -5,14 +5,23 @@ import io.ktor.client.engine.*
 import io.ktor.client.request.*
 import io.ktor.client.utils.*
 import kotlinx.coroutines.experimental.*
+import kotlinx.coroutines.experimental.scheduling.*
 import org.eclipse.jetty.http2.api.*
 import org.eclipse.jetty.http2.client.*
 import org.eclipse.jetty.util.ssl.*
 import java.net.*
 
+private val AVAILABLE_PROCESSORS = Runtime.getRuntime().availableProcessors()
 
 internal class JettyHttp2Engine(override val config: JettyEngineConfig) : HttpClientEngine {
-    override val dispatcher: CoroutineDispatcher = config.dispatcher ?: HTTP_CLIENT_DEFAULT_DISPATCHER
+    override val dispatcher: CoroutineDispatcher by lazy { TODO() }
+
+    private val ioThreadsCount = if (config.maxThreadsCount > 0)
+        config.maxThreadsCount
+    else
+        AVAILABLE_PROCESSORS / 2 + 1
+
+    internal val ioDispatcher = ExperimentalCoroutineDispatcher(ioThreadsCount)
 
     private val sslContextFactory: SslContextFactory = config.sslContextFactory
 
@@ -22,7 +31,7 @@ internal class JettyHttp2Engine(override val config: JettyEngineConfig) : HttpCl
     }
 
     override suspend fun execute(call: HttpClientCall, data: HttpRequestData): HttpEngineCall {
-        val request = JettyHttpRequest(call, this, dispatcher, data)
+        val request = JettyHttpRequest(call, this, data)
         val response = request.execute()
 
         return HttpEngineCall(request, response)

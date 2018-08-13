@@ -40,6 +40,16 @@ class ApacheEngineConfig : HttpClientEngineConfig() {
     var sslContext: SSLContext? = null
 
     /**
+     * Limit the single host max connections count.
+     */
+    var maxConnectionsPerRoute: Int = 10
+
+    /**
+     * Limit the maximum connections count.
+     */
+    var maxConnectionsCount: Int = 50
+
+    /**
      * Custom processor for [RequestConfig.Builder].
      */
     var customRequest: (RequestConfig.Builder.() -> RequestConfig.Builder) = { this }

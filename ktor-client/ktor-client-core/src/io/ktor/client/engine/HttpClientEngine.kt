@@ -13,6 +13,10 @@ interface HttpClientEngine : Closeable {
     /**
      * [CoroutineDispatcher] specified for io operations.
      */
+    @Deprecated(
+        message = "The client dispatcher is deprecated. Consider to use DefaultDispatcher instead",
+        level = DeprecationLevel.ERROR
+    )
     val dispatcher: CoroutineDispatcher
 
     /**

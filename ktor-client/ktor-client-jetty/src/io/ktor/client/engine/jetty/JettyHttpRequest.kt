@@ -1,6 +1,5 @@
 package io.ktor.client.engine.jetty
 
-import io.ktor.util.cio.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.*
 import io.ktor.client.request.*
@@ -10,6 +9,7 @@ import io.ktor.http.*
 import io.ktor.http.HttpMethod
 import io.ktor.http.content.*
 import io.ktor.util.*
+import io.ktor.util.cio.*
 import io.ktor.util.date.*
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.internal.*
@@ -23,7 +23,6 @@ import java.nio.*
 internal class JettyHttpRequest(
     override val call: HttpClientCall,
     private val client: JettyHttp2Engine,
-    private val dispatcher: CoroutineDispatcher,
     requestData: HttpRequestData
 ) : HttpRequest {
     override val attributes: Attributes = Attributes()
@@ -46,7 +45,7 @@ internal class JettyHttpRequest(
 
         val bodyChannel = ByteChannel()
         val responseContext = CompletableDeferred<Unit>()
-        val responseListener = JettyResponseListener(session, bodyChannel, dispatcher, responseContext)
+        val responseListener = JettyResponseListener(session, bodyChannel, responseContext, client.ioDispatcher)
 
         val jettyRequest = JettyHttp2Request(withPromise { promise ->
             session.newStream(headersFrame, promise, responseListener)
@@ -89,14 +88,18 @@ internal class JettyHttpRequest(
             }
             is OutgoingContent.ReadChannelContent -> content.readFrom().writeResponse(request)
             is OutgoingContent.WriteChannelContent -> {
-                val source = writer(dispatcher + executionContext) { content.writeTo(channel) }.channel
+                val source = writer(client.ioDispatcher, parent = executionContext) {
+                    content.writeTo(channel)
+                }.channel
                 source.writeResponse(request)
             }
             is OutgoingContent.ProtocolUpgrade -> throw UnsupportedContentTypeException(content)
         }
     }
 
-    private fun ByteReadChannel.writeResponse(request: JettyHttp2Request) = launch(dispatcher + executionContext) {
+    private fun ByteReadChannel.writeResponse(request: JettyHttp2Request) = launch(
+        client.ioDispatcher, parent = executionContext
+    ) {
         val buffer = HttpClientDefaultPool.borrow()
         pass(buffer) { request.write(it) }
         HttpClientDefaultPool.recycle(buffer)

@@ -25,8 +25,8 @@ private data class JettyResponseChunk(val buffer: ByteBuffer, val callback: Call
 internal class JettyResponseListener(
     private val session: HTTP2ClientSession,
     private val channel: ByteWriteChannel,
-    private val dispatcher: CoroutineDispatcher,
-    private val context: CompletableDeferred<Unit>
+    private val context: CompletableDeferred<Unit>,
+    private val dispatcher: CoroutineDispatcher
 ) : Stream.Listener {
     private val headersBuilder: HeadersBuilder = HeadersBuilder()
     private val onHeadersReceived: CompletableFuture<HttpStatusCode?> = CompletableFuture()

@@ -16,7 +16,6 @@ import kotlin.coroutines.experimental.*
 private const val MAX_QUEUE_LENGTH: Int = 65 * 1024 / DEFAULT_HTTP_BUFFER_SIZE
 
 internal class ApacheResponseConsumer(
-    private val dispatcher: CoroutineContext,
     private val parent: CompletableDeferred<Unit>,
     private val block: (HttpResponse, ByteReadChannel) -> Unit
 ) : AbstractAsyncResponseConsumer<Unit>() {
@@ -64,7 +63,7 @@ internal class ApacheResponseConsumer(
 
     override fun onEntityEnclosed(entity: HttpEntity, contentType: ContentType) {}
 
-    private fun runResponseProcessing() = launch(dispatcher) {
+    private fun runResponseProcessing() = launch {
         try {
             while (!backendChannel.isClosedForReceive) {
                 val buffer = backendChannel.receiveOrNull() ?: break

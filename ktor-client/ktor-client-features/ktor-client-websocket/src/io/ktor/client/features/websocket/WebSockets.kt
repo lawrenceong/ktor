@@ -45,8 +45,7 @@ class WebSockets(
 
                 val raw = RawWebSocket(
                     response.content, content.output,
-                    feature.maxFrameSize,
-                    dispatcher = scope.dispatcher
+                    feature.maxFrameSize
                 )
 
                 val session = object : ClientWebSocketSession, WebSocketSession by raw {

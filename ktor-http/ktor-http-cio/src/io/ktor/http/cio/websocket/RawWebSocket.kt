@@ -14,7 +14,7 @@ class RawWebSocket(
     input: ByteReadChannel, output: ByteWriteChannel,
     maxFrameSize: Long = Int.MAX_VALUE.toLong(),
     masking: Boolean = false,
-    override val dispatcher: CoroutineContext,
+    override val dispatcher: CoroutineContext = DefaultDispatcher,
     pool: ObjectPool<ByteBuffer> = KtorDefaultPool
 ) : WebSocketSession {
     private val socketJob = Job()

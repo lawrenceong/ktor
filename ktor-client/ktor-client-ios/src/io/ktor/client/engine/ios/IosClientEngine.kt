@@ -17,8 +17,7 @@ import platform.darwin.*
 class IosClientEngine(override val config: HttpClientEngineConfig) : HttpClientEngine {
     private val context: Job = Job()
 
-    // TODO: replace with UI dispatcher
-    override val dispatcher: CoroutineDispatcher = config.dispatcher ?: Unconfined
+    override val dispatcher: CoroutineDispatcher = TODO()
 
     override suspend fun execute(
         call: HttpClientCall,
@@ -53,7 +52,7 @@ class IosClientEngine(override val config: HttpClientEngineConfig) : HttpClientE
                     headersDict.mapKeys { (key, value) -> append(key, value) }
                 }
 
-                val responseContext = writer(dispatcher, autoFlush = true) {
+                val responseContext = writer(Unconfined, autoFlush = true) {
                     while (!chunks.isClosedForReceive) {
                         val chunk = chunks.receive()
                         channel.writeFully(chunk)
@@ -83,11 +82,11 @@ class IosClientEngine(override val config: HttpClientEngineConfig) : HttpClientE
 
         nativeRequest.setHTTPMethod(request.method.value)
 
-        launch(dispatcher) {
+        launch(Unconfined) {
             val content = request.content
             val body = when (content) {
                 is OutgoingContent.ByteArrayContent -> content.bytes().toNSData()
-                is OutgoingContent.WriteChannelContent -> writer(dispatcher) {
+                is OutgoingContent.WriteChannelContent -> writer(Unconfined) {
                     content.writeTo(channel)
                 }.channel.readRemaining().readBytes().toNSData()
                 is OutgoingContent.ReadChannelContent -> content.readFrom().readRemaining().readBytes().toNSData()

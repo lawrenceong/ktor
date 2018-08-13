@@ -17,8 +17,7 @@ internal class ApacheHttpRequest(
     override val call: HttpClientCall,
     private val engine: CloseableHttpAsyncClient,
     private val config: ApacheEngineConfig,
-    private val requestData: HttpRequestData,
-    private val dispatcher: CoroutineDispatcher
+    private val requestData: HttpRequestData
 ) : HttpRequest {
     override val attributes: Attributes = Attributes()
 
@@ -29,16 +28,15 @@ internal class ApacheHttpRequest(
 
     override val executionContext: CompletableDeferred<Unit> = requestData.executionContext
 
-    suspend fun execute(): HttpResponse {
-        val request = ApacheRequestProducer(requestData, config, content, dispatcher, executionContext)
-        return engine.sendRequest(call, request, dispatcher)
+    suspend fun execute(): HttpResponse = withContext(DefaultDispatcher) {
+        val request = ApacheRequestProducer(requestData, config, content, executionContext)
+        return@withContext engine.sendRequest(call, request)
     }
 }
 
 private suspend fun CloseableHttpAsyncClient.sendRequest(
     call: HttpClientCall,
-    request: ApacheRequestProducer,
-    dispatcher: CoroutineDispatcher
+    request: ApacheRequestProducer
 ): ApacheHttpResponse {
     val response = CompletableDeferred<ApacheHttpResponse>()
 
@@ -46,7 +44,7 @@ private suspend fun CloseableHttpAsyncClient.sendRequest(
     val requestTime = GMTDate()
     val parent = CompletableDeferred<Unit>()
 
-    val consumer = ApacheResponseConsumer(dispatcher, parent) { rawResponse, body ->
+    val consumer = ApacheResponseConsumer(parent) { rawResponse, body ->
         if (completed.compareAndSet(false, true)) {
             val result = ApacheHttpResponse(call, requestTime, parent, rawResponse, body)
             response.complete(result)

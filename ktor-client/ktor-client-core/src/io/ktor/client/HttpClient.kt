@@ -83,7 +83,8 @@ class HttpClient(
     /**
      * Dispatcher handles io operations
      */
-    val dispatcher: CoroutineDispatcher = engine.dispatcher
+    @Deprecated("HttpClient dispatcher is deprecated", replaceWith = ReplaceWith("DefaultDispatcher"))
+    val dispatcher: CoroutineDispatcher by lazy { TODO() }
 
     /**
      * Client engine config

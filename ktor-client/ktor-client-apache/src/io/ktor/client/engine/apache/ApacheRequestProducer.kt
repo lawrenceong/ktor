@@ -24,7 +24,6 @@ internal class ApacheRequestProducer(
     private val requestData: HttpRequestData,
     private val config: ApacheEngineConfig,
     private val body: OutgoingContent,
-    private val dispatcher: CoroutineDispatcher,
     private val context: CompletableDeferred<Unit>
 ) : HttpAsyncRequestProducer {
     private var requestJob: Job? = null
@@ -130,8 +129,8 @@ internal class ApacheRequestProducer(
         return builder.build()
     }
 
-    private fun prepareBody(bodyChannel: ByteReadChannel): Job {
-        val result = launch(dispatcher + context) {
+    private fun prepareBody(bodyChannel: ByteReadChannel) {
+        val result = launch(parent = context) {
             while (!bodyChannel.isClosedForRead) {
                 val buffer = HttpClientDefaultPool.borrow()
                 try {
@@ -151,7 +150,5 @@ internal class ApacheRequestProducer(
             if (cause != null) context.completeExceptionally(cause)
             else context.complete(Unit)
         }
-
-        return result
     }
 }

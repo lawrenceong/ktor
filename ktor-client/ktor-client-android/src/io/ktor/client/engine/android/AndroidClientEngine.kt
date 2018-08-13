@@ -6,26 +6,31 @@ import io.ktor.client.engine.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.http.content.*
+import io.ktor.util.cio.Semaphore
 import io.ktor.util.date.*
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.io.*
 import kotlinx.coroutines.experimental.io.jvm.javaio.*
+import kotlinx.coroutines.experimental.scheduling.*
 import java.io.*
 import java.net.*
 import java.util.*
 import java.util.concurrent.*
 
 open class AndroidClientEngine(override val config: AndroidEngineConfig) : HttpClientEngine {
-    override val dispatcher: CoroutineDispatcher by lazy {
-        config.dispatcher ?: Executors.newCachedThreadPool().asCoroutineDispatcher()
-    }
+    override val dispatcher: CoroutineDispatcher by lazy { TODO() }
+
+    private val maxParallelConnections = if (config.maxThreadsCount > 0) config.maxThreadsCount else 10
+    private val connectionLimiter = Semaphore(maxParallelConnections)
 
     override suspend fun execute(
         call: HttpClientCall, data: HttpRequestData
-    ): HttpEngineCall = withContext(dispatcher) {
-        val request = AndroidHttpRequest(call, data)
-        val response = request.execute()
-        HttpEngineCall(request, response)
+    ): HttpEngineCall = withContext(DefaultDispatcher) {
+        connectionLimiter.use {
+            val request = AndroidHttpRequest(call, data)
+            val response = request.execute()
+            HttpEngineCall(request, response)
+        }
     }
 
     override fun close() {
@@ -66,7 +71,7 @@ open class AndroidClientEngine(override val config: AndroidEngineConfig) : HttpC
         }
 
         connection.connect()
-        val content = connection.content(dispatcher)
+        val content = connection.content()
         val headerFields = connection.headerFields
 
         val responseHeaders = HeadersBuilder().apply {
@@ -93,8 +98,8 @@ internal fun OutgoingContent.writeTo(stream: OutputStream): Unit = stream.use {
     }
 }
 
-internal fun HttpURLConnection.content(dispatcher: CoroutineDispatcher): ByteReadChannel = try {
+internal fun HttpURLConnection.content(): ByteReadChannel = try {
     inputStream?.buffered()
 } catch (_: IOException) {
     errorStream?.buffered()
-}?.toByteReadChannel(context = dispatcher) ?: ByteReadChannel.Empty
+}?.toByteReadChannel(context = DefaultDispatcher) ?: ByteReadChannel.Empty

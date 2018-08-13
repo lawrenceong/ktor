@@ -7,13 +7,26 @@ import io.ktor.client.utils.*
 import io.ktor.http.*
 import io.ktor.network.selector.*
 import kotlinx.coroutines.experimental.channels.*
+import kotlinx.coroutines.experimental.scheduling.*
 import java.util.concurrent.*
 import java.util.concurrent.atomic.*
+
+private val AVAILABLE_PROCESSORS = Runtime.getRuntime().availableProcessors()
 
 private val selectorManager by lazy { ActorSelectorManager(HTTP_CLIENT_DEFAULT_DISPATCHER) }
 
 internal class CIOEngine(override val config: CIOEngineConfig) : HttpClientEngine {
-    override val dispatcher = config.dispatcher ?: HTTP_CLIENT_DEFAULT_DISPATCHER
+    override val dispatcher by lazy { TODO() }
+
+    private val ioThreadsCount = if (config.maxConnectionsCount > 0)
+        config.maxConnectionsCount
+    else
+        AVAILABLE_PROCESSORS / 2 + 1
+
+    private val ioDispatcher = ExperimentalCoroutineDispatcher(
+        maxPoolSize = ioThreadsCount
+    )
+
     private val endpoints = ConcurrentHashMap<String, Endpoint>()
 
     private val connectionFactory = ConnectionFactory(selectorManager, config.maxConnectionsCount)
@@ -34,7 +47,7 @@ internal class CIOEngine(override val config: CIOEngineConfig) : HttpClientEngin
                 val address = "$host:$port:$protocol"
                 endpoints.computeIfAbsent(address) {
                     val secure = (protocol.isSecure())
-                    Endpoint(host, port, secure, dispatcher, config, connectionFactory) {
+                    Endpoint(host, port, secure, ioDispatcher, config, connectionFactory) {
                         endpoints.remove(address)
                     }
                 }
